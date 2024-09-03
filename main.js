@@ -192,7 +192,7 @@ async function linkFiles(manifest, modelsDir, config) {
 
     for (const layer of manifest.layers) {
         const type = layer.mediaType.split(".").pop();
-        if (!FILE_TYPES.includes(type) || !config[type]) return;
+        if (!FILE_TYPES.includes(type) || !config[type]) continue;
 
         const file = new ModelFile(config[type]);
         layer.size = await file.size();
