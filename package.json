@@ -1,0 +1,20 @@
+{
+  "name": "ollama-model-generator",
+  "version": "0.0.1",
+  "description": "NodeJS script to add models to ollama without duplication.",
+  "homepage": "https://github.com/GenericMale/ollama-model-generator",
+  "bugs": "https://github.com/GenericMale/ollama-model-generator/issues",
+  "license": "EUPL-1.2",
+  "author": "GenericMale",
+  "main": "main.js",
+  "bin": {
+    "ollama-model-generator": "main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GenericMale/ollama-model-generator.git"
+  },
+  "engines": {
+    "node": ">=19"
+  }
+}
