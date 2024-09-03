@@ -1,10 +1,25 @@
 # Ollama Model Generator
+
+[![GitHub License](https://img.shields.io/github/license/GenericMale/ollama-model-generator?logo=github)](https://github.com/GenericMale/ollama-model-generator/blob/main/LICENSE)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/genericmale/ollama-model-generator?label=commit&logo=github)](https://github.com/GenericMale/ollama-model-generator)
+[![NPM Package Version](https://img.shields.io/npm/v/ollama-model-generator?logo=npm&logoColor=white)](https://www.npmjs.com/package/ollama-model-generator)
+[![NPM Package Size](https://img.shields.io/npm/unpacked-size/ollama-model-generator?label=size&logo=npm&logoColor=white)](https://www.npmjs.com/package/ollama-model-generator)
+[![NodeJS Version](https://img.shields.io/node/v/ollama-model-generator?logo=node.js&logoColor=white)](https://www.npmjs.com/package/ollama-model-generator)
+
 NodeJS script to add GGUF models to ollama. No dependencies besides NodeJS >= v19.
 
 Creates symlinks for Ollama to avoid duplication and downloads required model metadata (template, params, prompts etc) from the Ollama Registry.
 
+## Installation
+
 ```shell
-Usage: ollama-model-generator [options]
+npm install -g ollama-model-generator
+```
+
+## Usage
+
+```shell
+ollama-model-generator [options]
 
   Options:
   
