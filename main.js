@@ -287,7 +287,7 @@ async function pull(config) {
 async function printMetadata(file) {
     const model = new ModelFile(file);
     const metadata = await model.readMetadata();
-    process.stdout.write(JSON.stringify(metadata.general, null, 2));
+    process.stdout.write(JSON.stringify(metadata, null, 2));
 }
 
 const args = util.parseArgs({options}).values;
