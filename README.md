@@ -31,7 +31,7 @@ npm install -g ollama-model-generator
 ollama-model-generator [options]
 
   Options:
-    --model, -m <path>        Path to the GGUF model file. This will be symlinked to Ollama blob storage.
+    --model <path>            Path to the GGUF model file. This will be symlinked to Ollama blob storage.
                               If the file doesn't exist, it will be downloaded from the Ollama Registry based on --from.
                               Optional. If not provided, the model will be downloaded to the Ollama blob storage.
   
@@ -88,7 +88,7 @@ This will download the Gemma 2 model but use the local `my-template.txt` file as
 ### Print GGUF metadata
 
 ```shell
-ollama-model-generator -s --model my-model.gguf
+ollama-model-generator --show --model my-model.gguf
 ```
 
 Prints the GGUF metadata of the model file as JSON.
