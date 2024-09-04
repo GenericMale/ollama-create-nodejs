@@ -6,47 +6,54 @@
  */
 
 const crypto = require("crypto");
-const fs = require("fs").promises;
+const fs = require("fs/promises");
 const os = require("os");
 const path = require("path");
+const stream = require("stream/promises");
+const {Readable} = require("stream");
 const util = require("util");
 
 const MODELS_DIR =
     process.env.OLLAMA_MODELS || path.join(os.homedir(), ".ollama", "models");
 
 const FILE_TYPES = [
-    "model",
-    "embed",
     "adapter",
+    "embed",
+    "license",
+    "messages",
+    "model",
+    "params",
     "projector",
     "prompt",
-    "template",
     "system",
-    "params",
-    "messages",
-    "license",
+    "template",
 ];
 const MODEL_REGEX =
     /^(?:(?<repository>[\w.-]+)\/)?(?<model>[\w.-]+)(?::(?<version>[\w.-]+))?$/;
 
 const options = {
-    metadata: {
-        type: "boolean",
-        default: false,
-    },
-    parent: {
+    from: {
         type: "string",
+        short: "f",
     },
     name: {
         type: "string",
+        short: "n",
+    },
+    show: {
+        type: "boolean",
+        default: false,
+        short: "s",
     },
     registry: {
         type: "string",
         default: "registry.ollama.ai",
+        short: "r",
     },
-    modelsDir: {
+    dir: {
         type: "string",
         default: MODELS_DIR,
+        short: "d",
     },
 };
 FILE_TYPES.forEach((t) => (options[t] = {type: "string"}));
@@ -157,8 +164,14 @@ class ModelFile {
 
             let prop = metadata;
             key.split(".").forEach((k, i, keys) => {
-                const val = i === keys.length - 1 ? value : prop[k] || {};
-                prop = prop[k] = val;
+                if (i === keys.length - 1) {
+                    prop[k] = value;
+                } else if (prop[k] === undefined) {
+                    prop[k] = {}
+                } else if (!(prop[k] instanceof Object)) {
+                    prop[k] = {value: prop[k]}
+                }
+                prop = prop[k];
             });
         }
 
@@ -171,7 +184,6 @@ function getModelName(metadata) {
     if (metadata.size_label) parts.push(metadata.size_label);
     if (metadata.finetune) parts.push(metadata.finetune);
     if (metadata.version) parts.push(metadata.version);
-    if (metadata.file_type) parts.push(metadata.file_type);
     return parts.join("-").replaceAll(" ", "-");
 }
 
@@ -184,26 +196,6 @@ async function downloadManifest(baseUrl, version) {
         throw new Error(`failed to download manifest: ${msg}`);
     }
     return manifest;
-}
-
-async function linkFiles(manifest, modelsDir, config) {
-    const dir = path.join(modelsDir, "blobs");
-    await fs.mkdir(dir, {recursive: true});
-
-    for (const layer of manifest.layers) {
-        const type = layer.mediaType.split(".").pop();
-        if (!FILE_TYPES.includes(type) || !config[type]) continue;
-
-        const file = new ModelFile(config[type]);
-        layer.size = await file.size();
-        layer.from = file.path;
-        layer.digest = await file.digest();
-
-        const target = path.join(dir, layer.digest.replace(":", "-"));
-        console.log(`Linking ${target} to ${file}...`);
-        await fs.rm(target, {force: true});
-        await fs.symlink(file.path, target);
-    }
 }
 
 async function writeManifest(dir, manifest) {
@@ -224,60 +216,82 @@ async function exists(file) {
     }
 }
 
-async function downloadDigests(baseUrl, modelsDir, manifest) {
-    const digests = manifest.layers.filter((l) => !l.from).map((l) => l.digest);
-    digests.push(manifest.config.digest);
+async function downloadBlob(baseUrl, digest, path) {
+    const url = `${baseUrl}/blobs/${digest}`;
+    console.log(`Downloading ${url}...`);
+    const response = await fetch(url);
+    const file = await fs.open(path, "w");
+    const body = Readable.fromWeb(response.body);
+    await stream.finished(body.pipe(file.createWriteStream()));
+}
 
-    for (const digest of digests) {
-        const blobFile = path.join(modelsDir, "blobs", digest.replace(":", "-"));
-        if (await exists(blobFile)) continue;
+async function downloadDigests(baseUrl, dir, manifest, config) {
+    await fs.mkdir(path.join(dir, "blobs"), {recursive: true});
 
-        const url = `${baseUrl}/blobs/${digest}`;
-        console.log(`Downloading ${url}...`);
-        const response = await fetch(url);
-        const data = await response.bytes();
-        await fs.writeFile(blobFile, data);
+    const layers = [...manifest.layers];
+    layers.push(manifest.config);
+
+    for (const layer of layers) {
+        const type = layer.mediaType.split(".").pop();
+        if (config[type] && FILE_TYPES.includes(type)) {
+            const file = new ModelFile(config[type]);
+            if (await exists(file.path)) {
+                layer.size = await file.size();
+                layer.digest = await file.digest();
+            } else {
+                await downloadBlob(baseUrl, layer.digest, file.path);
+            }
+
+            const target = path.join(dir, "blobs", layer.digest.replace(":", "-"));
+            console.log(`Linking ${target} to ${file.path}...`);
+            await fs.rm(target, {force: true});
+            await fs.symlink(file.path, target);
+        } else {
+            const file = path.join(dir, "blobs", layer.digest.replace(":", "-"));
+            if (!await exists(file)) {
+                await downloadBlob(baseUrl, layer.digest, file);
+            }
+        }
     }
 }
 
 async function pull(config) {
-    let {parent, registry, modelsDir, name} = config;
-    if (config.model && (!parent || !name)) {
+    let {from, registry, dir, name} = config;
+    if (config.model && await exists(config.model) && (!from || !name)) {
         console.log("Parsing GGUF Metadata...");
         const model = new ModelFile(config.model);
         const {general} = await model.readMetadata();
         console.log(general);
 
         name = name || getModelName(general);
-        parent = parent || general.architecture;
+        from = from || general.architecture;
     }
 
-    if (!parent) {
-        throw new Error("specify parent model name or source model file.");
+    if (!from) {
+        throw new Error("specify from model name or source model file.");
     }
 
-    let {repository, model, version} = MODEL_REGEX.exec(parent).groups;
+    let {repository, model, version} = MODEL_REGEX.exec(from).groups;
     repository = repository || "library";
     version = version || "latest";
     const baseUrl = `https://${registry}/v2/${repository}/${model}`;
 
     const manifest = await downloadManifest(baseUrl, version);
-    await linkFiles(manifest, modelsDir, config);
+    await downloadDigests(baseUrl, dir, manifest, config);
     await writeManifest(
-        path.join(modelsDir, "manifests", registry, repository, name || model),
+        path.join(dir, "manifests", registry, repository, name || model),
         manifest
     );
-    await downloadDigests(baseUrl, modelsDir, manifest);
 }
 
 async function printMetadata(file) {
     const model = new ModelFile(file);
     const metadata = await model.readMetadata();
-    process.stdout.write(JSON.stringify(metadata, null, 2));
+    process.stdout.write(JSON.stringify(metadata.general, null, 2));
 }
 
 const args = util.parseArgs({options}).values;
-if (args.metadata) {
+if (args.show) {
     printMetadata(args.model);
 } else {
     pull(args);

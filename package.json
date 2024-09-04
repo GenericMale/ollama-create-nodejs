@@ -15,7 +15,7 @@
     "url": "https://github.com/GenericMale/ollama-model-generator.git"
   },
   "engines": {
-    "node": ">=19"
+    "node": ">=18.11.0"
   },
   "files": []
 }
