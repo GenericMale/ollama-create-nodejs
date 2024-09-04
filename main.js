@@ -208,6 +208,7 @@ async function writeManifest(dir, manifest) {
 }
 
 async function exists(file) {
+    if (!file) return false
     try {
         await fs.access(file, fs.constants.R_OK);
         return true;
@@ -257,7 +258,7 @@ async function downloadDigests(baseUrl, dir, manifest, config) {
 
 async function pull(config) {
     let {from, registry, dir, name} = config;
-    if (config.model && await exists(config.model) && (!from || !name)) {
+    if (await exists(config.model) && (!from || !name)) {
         console.log("Parsing GGUF Metadata...");
         const model = new ModelFile(config.model);
         const {general} = await model.readMetadata();
@@ -285,7 +286,7 @@ async function pull(config) {
 }
 
 async function printMetadata(file) {
-    if(!file || !await exists(file.path)) {
+    if (!await exists(file.path)) {
         throw new Error("invalid model file.");
     }
 

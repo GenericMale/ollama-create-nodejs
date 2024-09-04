@@ -1,6 +1,6 @@
 {
   "name": "ollama-model-generator",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "NodeJS script to add models to ollama without duplication.",
   "homepage": "https://github.com/GenericMale/ollama-model-generator",
   "bugs": "https://github.com/GenericMale/ollama-model-generator/issues",
