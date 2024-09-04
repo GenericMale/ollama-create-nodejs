@@ -285,12 +285,18 @@ async function pull(config) {
 }
 
 async function printMetadata(file) {
+    if(!file || !await exists(file.path)) {
+        throw new Error("invalid model file.");
+    }
+
     const model = new ModelFile(file);
     const metadata = await model.readMetadata();
     process.stdout.write(JSON.stringify(metadata, null, 2));
 }
 
+process.on('uncaughtException', console.error);
 const args = util.parseArgs({options}).values;
+
 if (args.show) {
     printMetadata(args.model);
 } else {
