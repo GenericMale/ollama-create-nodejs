@@ -1,14 +1,14 @@
-# Ollama Model Generator
+# Ollama Create NodeJS
 
-[![GitHub License](https://img.shields.io/github/license/GenericMale/ollama-model-generator?logo=github)](https://github.com/GenericMale/ollama-model-generator/blob/main/LICENSE)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/genericmale/ollama-model-generator?label=commit&logo=github)](https://github.com/GenericMale/ollama-model-generator)
-[![NPM Package Version](https://img.shields.io/npm/v/ollama-model-generator?logo=npm&logoColor=white)](https://www.npmjs.com/package/ollama-model-generator)
-[![NPM Package Size](https://img.shields.io/npm/unpacked-size/ollama-model-generator?label=size&logo=npm&logoColor=white)](https://www.npmjs.com/package/ollama-model-generator)
-[![NodeJS Version](https://img.shields.io/node/v/ollama-model-generator?logo=node.js&logoColor=white)](https://www.npmjs.com/package/ollama-model-generator)
+[![GitHub License](https://img.shields.io/github/license/GenericMale/ollama-create-nodejs?logo=github)](https://github.com/GenericMale/ollama-create-nodejs/blob/main/LICENSE)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/genericmale/ollama-create-nodejs?label=commit&logo=github)](https://github.com/GenericMale/ollama-create-nodejs)
+[![NPM Package Version](https://img.shields.io/npm/v/ollama-create?logo=npm&logoColor=white)](https://www.npmjs.com/package/ollama-create)
+[![NPM Package Size](https://img.shields.io/npm/unpacked-size/ollama-create?label=size&logo=npm&logoColor=white)](https://www.npmjs.com/package/ollama-create)
+[![NodeJS Version](https://img.shields.io/node/v/ollama-create?logo=node.js&logoColor=white)](https://www.npmjs.com/package/ollama-create)
 
 ## Introduction
 
-This NodeJS CLI script simplifies adding GGUF models to Ollama by creating symlinks and downloading necessary metadata
+NodeJS CLI script which simplifies adding GGUF models to Ollama by creating symlinks and downloading necessary metadata
 from the Ollama Registry.
 
 Benefits:
@@ -22,40 +22,39 @@ Benefits:
 Requires NodeJS version 18.11.0 or higher. Install it globally using npm:
 
 ```shell
-npm install -g ollama-model-generator
+npm install -g ollama-create
 ```
 
 ## Usage
 
 ```
-ollama-model-generator [options]
+Usage: ollama-create [OPTIONS] [MODEL...]
 
-  Options:
-    --model <path>            Path to the GGUF model file. This will be symlinked to Ollama blob storage.
-                              If the file doesn't exist, it will be downloaded from the Ollama Registry based on --from.
-                              Optional. If not provided, the model will be downloaded to the Ollama blob storage.
-  
-    --from, -f <name>         Model name in the Ollama Registry to download as a base.
-                              Default: architecture of the GGUF model.
-                              
-    --name, -n <name>         Name of the new model in Ollama.
-                              Default: basename-size-finetune-version of the GGUF model.
-                              If --model is not provided, it defaults to the name from --from.
-                              
-    --show, -s                Prints model metadata from the GGUF file header as JSON (requires --model).
-    
-    --registry, -r <registry> The Ollama Registry URL.
-                              Default: registry.ollama.ai
-    
-    --dir, -d <path>          Directory for storing Ollama model data.
-                              Default: $OLLAMA_MODELS or ~/.ollama/models
-```
+Create a new Ollama model based on a base model from the Ollama registry.
+MODEL can be a local GGUF file or the name of a model in the Ollama registry.
 
-Additional files can be symlinked in the same way as --model (
-see [Ollama Model File](https://github.com/ollama/ollama/blob/main/docs/modelfile.md)):
+All specified files will be symlinked to Ollama to avoid duplication.
+If a file is supplied which doesn't exist, it will be created from the base model in the specified location.
+To remove a setting from the base model, use --no-<option>.
 
-```
---adapter, --embed, --license, --messages, --params, --projector, --prompt, --system, --template
+OPTIONS:
+  -f, --from <from>           Defines the base model from the Ollama registry to use.
+                              Defaults to the model architecture from the GGUF metadata.
+  -n, --name <name>           Set the name for the new model.
+                              Defaults to <name>-<size>-<finetune>-<version> from the GGUF metadata
+                              or the base model name if no model file is specified.
+  -d, --dir <dir>             Download all base model files to the specified directory and create symlinks for Ollama.
+
+  -p, --params <json file>    Specify a JSON file containing parameters for Ollama.
+  -m, --messages <json file>  Provide a JSON file containing the message history.
+  -t, --template <txt file>   Define a file containing the full prompt template.
+  -s, --system <txt file>     Specify a file containing the system message.
+  -a, --adapter <gguf file>   Apply (Q)LoRA adapters to the model.
+  -j, --projector <gguf file> Define multimodal projectors.
+  -l, --license <txt file>    Specify a file containing the legal license.
+
+  -g, --show                  Print the GGUF metadata of the model.
+  -h, --help                  Display this help and exit.
 ```
 
 ## Example
@@ -63,32 +62,54 @@ see [Ollama Model File](https://github.com/ollama/ollama/blob/main/docs/modelfil
 ### Download a model from the Ollama Registry
 
 ```shell
-ollama-model-generator --from gemma2
+ollama-create gemma2
 ```
 
 This will download the Gemma 2 model from the Ollama Registry and configure it in Ollama (same as `ollama pull gemma2`).
 
-### Use a local GGUF model
+### Use existing GGUF model file
 
 ```shell
-ollama-model-generator --from llama3.1 --model my-model.gguf --name LLama3.1-MyModel
+ollama-create --from llama3.1 my-model.gguf
 ```
 
-This will use the local `my-model.gguf` file and configure it in Ollama with the name `LLama3.1-MyModel`.
+This will use the local `my-model.gguf` file and configure it in Ollama by creating a symlink.
 The Ollama metadata (template, params etc.) is taken from the Llama 3.1 model.
+
+If `my-model.gguf` doesn't exist, the `llama3.1` model will be downloaded and saved as `my-model.gguf`.
 
 ### Use custom template
 
 ```shell
-ollama-model-generator --from gemma2 --template my-template.txt
+ollama-create --template my-template.txt gemma2
 ```
 
 This will download the Gemma 2 model but use the local `my-template.txt` file as prompt template.
 
+If `my-template.txt` doesn't exist, the template from the Gemma 2 model will be downloaded and saved as `my-template.txt`.
+
+### Remove parameters
+
+```shell
+ollama-create --no-params gemma2
+```
+
+This will download the Gemma 2 model but removes all parameter instructions.
+
+### Save all model files in custom location
+
+```shell
+ollama-create --dir ./models/gemma gemma2
+```
+
+This will download the Gemma 2 model and save all Ollama artifacts to the `./models/gemma/` directory.
+Symlinks in the Ollama blob store are created for all files.
+
+
 ### Print GGUF metadata
 
 ```shell
-ollama-model-generator --show --model my-model.gguf
+ollama-create --metadata my-model.gguf
 ```
 
 Prints the GGUF metadata of the model file as JSON.
